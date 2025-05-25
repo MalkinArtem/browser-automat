@@ -94,57 +94,50 @@ def setup_gologin(profile_id: str) -> (GoLogin, int):
     return gl, port
 
 def configure_browser(port: int, headless: bool) -> webdriver.Chrome:
-    """
-    Конфигурирование Selenium WebDriver для работы с GoLogin.
-    """
     options = Options()
-    options.set_capability(
-        "goog:chromeOptions",
-        {"debuggerAddress": f"127.0.0.1:{port}"}
-    )
+    options.set_capability("goog:chromeOptions", {
+        "debuggerAddress": f"127.0.0.1:{port}"
+    })
+
     if headless:
-        options.add_argument("--headless=new")
+        options.add_argument("--headless=chrome")
 
     options.add_argument("--window-size=1280,720")
     options.add_argument("--lang=en-US")
+    options.add_argument("--disable-gpu")
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
+    options.add_argument("--disable-software-rasterizer")
+    options.add_argument("--disable-extensions")
+    options.add_argument("--disable-background-networking")
+    options.add_argument("--disable-sync")
+    options.add_argument("--metrics-recording-only")
+    options.add_argument("--disable-default-apps")
+    options.add_argument("--mute-audio")
+    options.add_argument("--disable-ipv6")
+    options.add_argument("--host-resolver-rules=MAP * 0.0.0.0 , EXCLUDE localhost")
     options.add_argument("--disable-blink-features=AutomationControlled")
     options.add_argument(
         "--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/120.0.0.0 Safari/537.36"
+        "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
     )
     options.add_argument("--accept-lang=en-US,en;q=0.9")
-    options.add_experimental_option(
-        "excludeSwitches", ["enable-automation"]
-    )
+    options.add_experimental_option("excludeSwitches", ["enable-automation"])
     options.add_experimental_option("useAutomationExtension", False)
 
-    options.add_argument("--disable-gpu")
-    options.add_argument("--disable-dev-shm-usage")
-    options.add_argument("--disable-software-rasterizer")
-    options.add_argument("--disable-accelerated-2d-canvas")
-    options.add_argument("--disable-setuid-sandbox")
-    options.add_argument("--no-sandbox")
-
     chromedriver_path = os.getenv("CHROMEDRIVER_PATH")
-
     if not chromedriver_path or not os.path.isfile(chromedriver_path):
-        raise FileNotFoundError(
-            f"Chromedriver not found at path: {chromedriver_path}")
+        raise FileNotFoundError(f"Chromedriver not found at path: {chromedriver_path}")
 
     service = Service(chromedriver_path)
     driver = webdriver.Chrome(service=service, options=options)
 
-    driver.execute_cdp_cmd(
-        "Page.addScriptToEvaluateOnNewDocument", {
-            "source": (
-                "Object.defineProperty(navigator, 'language', "
-                "{get: () => 'en-US'});"
-                "Object.defineProperty(navigator, 'languages', "
-                "{get: () => ['en-US', 'en']});"
-            )
-        }
-    )
+    driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
+        "source": (
+            "Object.defineProperty(navigator, 'language', {get: () => 'en-US'});"
+            "Object.defineProperty(navigator, 'languages', {get: () => ['en-US', 'en']});"
+        )
+    })
 
     return driver
 
