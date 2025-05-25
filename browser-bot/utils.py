@@ -119,7 +119,13 @@ def configure_browser(port: int, headless: bool) -> webdriver.Chrome:
     )
     options.add_experimental_option("useAutomationExtension", False)
 
-    service = Service("/opt/homebrew/bin/chromedriver")
+    chromedriver_path = os.getenv("CHROMEDRIVER_PATH")
+
+    if not chromedriver_path or not os.path.isfile(chromedriver_path):
+        raise FileNotFoundError(
+            f"Chromedriver not found at path: {chromedriver_path}")
+
+    service = Service(chromedriver_path)
     driver = webdriver.Chrome(service=service, options=options)
 
     driver.execute_cdp_cmd(
