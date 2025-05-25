@@ -34,13 +34,6 @@ GOLOGIN_TOKEN = os.environ.get("GOLOGIN_TOKEN")
 if not GOLOGIN_TOKEN:
     raise ValueError("GOLOGIN_TOKEN is not set in the environment.")
 
-HEADLESS = 0
-
-JUNK = 1
-UNJUNK = 0
-DELETE = 0
-
-
 def process_full_flow(driver, email):
     if JUNK:
         process_focused_and_other_tabs(driver, email)
@@ -77,7 +70,7 @@ def handle_browser_session(profile_id, email, password):
                 logger.warning(f"[CLEANUP] Failed to stop GoLogin profile: {e}")
 
 
-@retry(stop=stop_after_attempt(3), wait=wait_fixed(5))
+@retry(stop=stop_after_attempt(2), wait=wait_fixed(3))
 def process_account(email: str, password: str, profile_id: str):
     logger.info(f"[START] Processing account: {email}")
     try:
