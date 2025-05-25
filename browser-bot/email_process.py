@@ -7,7 +7,6 @@ import re
 from database.db import SessionLocal
 from database.models import Profile
 from sqlalchemy.sql.expression import func
-
 from tenacity import retry, stop_after_attempt, wait_fixed
 
 from utils import (
@@ -21,6 +20,7 @@ from utils import (
     delete_all_messages,
     process_focused_and_other_tabs_archive,
 )
+from settings import HEADLESS, JUNK, UNJUNK, DELETE
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)

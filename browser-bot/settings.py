@@ -1,0 +1,5 @@
+HEADLESS = 0
+
+JUNK = 1
+UNJUNK = 0
+DELETE = 0
