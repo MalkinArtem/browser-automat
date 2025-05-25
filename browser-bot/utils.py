@@ -119,6 +119,13 @@ def configure_browser(port: int, headless: bool) -> webdriver.Chrome:
     )
     options.add_experimental_option("useAutomationExtension", False)
 
+    options.add_argument("--disable-gpu")
+    options.add_argument("--disable-dev-shm-usage")
+    options.add_argument("--disable-software-rasterizer")
+    options.add_argument("--disable-accelerated-2d-canvas")
+    options.add_argument("--disable-setuid-sandbox")
+    options.add_argument("--no-sandbox")
+
     chromedriver_path = os.getenv("CHROMEDRIVER_PATH")
 
     if not chromedriver_path or not os.path.isfile(chromedriver_path):
