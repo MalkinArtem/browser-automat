@@ -1,0 +1,10 @@
+selenium==4.30.0
+gologin==2025.4.10135747
+chromedriver-autoinstaller==0.6.4
+pandas==2.2.3
+python-dotenv==1.1.0
+pyautogui==0.9.54
+undetected-chromedriver==3.5.5
+sqlalchemy==2.0.40
+psycopg2-binary==2.9.10
+tenacity==9.1.2

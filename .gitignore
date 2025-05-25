@@ -1,0 +1,27 @@
+# Configuration files
+../.env
+*.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# macOS
+.DS_Store
+
+# PyCharm
+.idea/
+
+# Virtual Environment
+.venv/
+Pipfile
+Pipfile.lock
+/venv/
+
+# App
+browser-bot/screenshots/
+browser-botoutlook_errors.log
+browser-bot/results.csv/
+browser-bot/logs/
+browser-botgologin_zeroprofile.zip
