@@ -141,209 +141,213 @@ def configure_browser(port: int, headless: bool) -> webdriver.Chrome:
 
     return driver
 
-def login_to_email(driver, email, password):
+def login_to_email(driver, email, password, max_attempts=3):
     """
     Выполняет вход в учетную запись пользователя через Outlook.
+    Если возникает ошибка — повторяет попытку входа (до max_attempts раз).
     """
-    wait = WebDriverWait(driver, 40)
-    driver.get("https://outlook.live.com/owa/?lang=en-us")
-    logger.info("Opened Outlook")
-
-    try:
-        wait.until(lambda d: d.execute_script("return document.readyState") == "complete")
-        logger.info("Page DOM fully loaded.")
-    except TimeoutException:
-        logger.warning("Page took too long to load completely.")
-
-    try:
-        wait.until(EC.presence_of_element_located((By.TAG_NAME, "body")))
-        logger.info("Page body is present.")
-    except TimeoutException:
-        raise Exception("Page body did not appear in time.")
-
-    try:
-        cookie_btn = wait.until(
-            EC.element_to_be_clickable((
-                By.XPATH,
-                "//button[contains(text(), 'Accept')]"
-            ))
-        )
-        click_with_human_mouse(driver, cookie_btn)
-        logger.info("Accepted cookies.")
-    except Exception:
-        logger.info("Cookie button not found or not clickable.")
-
-    selectors = [
-        "//a[contains(text(), 'Sign in')]",
-        "//a[contains(@class, 'signInLink')]",
-        "//a[@data-task='signin']",
-        "//span[contains(text(), 'Sign in')]/parent::*",
-        "//div[contains(@class, 'SignIn')]//a",
-        "//a[@role='button' and contains(., 'Sign in')]",
-        "//a[@aria-label='Sign in']",
-    ]
-
-    found = False
-    for selector in selectors:
+    for attempt in range(1, max_attempts + 1):
         try:
-            for el in driver.find_elements(By.XPATH, selector):
-                if el.is_displayed():
-                    click_with_human_mouse(driver, el)
-                    logger.info(f"Clicked 'Sign in' using selector: {selector}")
-                    found = True
+            logger.info(f"[{email}] Login attempt {attempt}")
+            wait = WebDriverWait(driver, 40)
+            driver.get("https://outlook.live.com/owa/?lang=en-us")
+            logger.info("Opened Outlook")
+
+            try:
+                wait.until(lambda d: d.execute_script(
+                    "return document.readyState") == "complete")
+                logger.info("Page DOM fully loaded.")
+            except TimeoutException:
+                logger.warning("Page took too long to load completely.")
+
+            try:
+                wait.until(EC.presence_of_element_located((By.TAG_NAME, "body")))
+                logger.info("Page body is present.")
+            except TimeoutException:
+                raise Exception("Page body did not appear in time.")
+
+            try:
+                cookie_btn = wait.until(EC.element_to_be_clickable((
+                    By.XPATH, "//button[contains(text(), 'Accept')]")))
+                click_with_human_mouse(driver, cookie_btn)
+                logger.info("Accepted cookies.")
+            except Exception:
+                logger.info("Cookie button not found or not clickable.")
+
+            selectors = [
+                "//a[contains(text(), 'Sign in')]",
+                "//a[contains(@class, 'signInLink')]",
+                "//a[@data-task='signin']",
+                "//span[contains(text(), 'Sign in')]/parent::*",
+                "//div[contains(@class, 'SignIn')]//a",
+                "//a[@role='button' and contains(., 'Sign in')]",
+                "//a[@aria-label='Sign in']",
+            ]
+
+            found = False
+            for selector in selectors:
+                try:
+                    for el in driver.find_elements(By.XPATH, selector):
+                        if el.is_displayed():
+                            click_with_human_mouse(driver, el)
+                            logger.info(f"Clicked 'Sign in' using selector: {selector}")
+                            found = True
+                            break
+                    if found:
+                        break
+                except Exception:
+                    logger.info(f"Error interacting with selector: {selector}")
+            if not found:
+                raise Exception("Sign in button not found or not clickable")
+
+            WebDriverWait(driver, 30).until(
+                lambda d: d.execute_script("return document.readyState") == "complete"
+            )
+            time.sleep(2)
+            logger.info(f"Page loaded: {driver.current_url}")
+
+            WebDriverWait(driver, 10).until(
+                lambda d: d.execute_script("return document.readyState") == "complete"
+            )
+            time.sleep(5)
+
+            email_input = None
+            for by, selector in [
+                (By.NAME, "loginfmt"),
+                (By.CSS_SELECTOR, "input[type='email']"),
+                (By.XPATH, "//input[@type='email' or @name='loginfmt']")
+            ]:
+                try:
+                    email_input = wait.until(
+                        EC.element_to_be_clickable((by, selector))
+                    )
+                    if email_input.is_displayed():
+                        click_with_human_mouse(driver, email_input)
+                        email_input.clear()
+                        human_typing(email_input, email)
+                        logger.info(f"Entered email: {email}")
+                        break
+                except Exception as e:
+                    logger.info(
+                        f"Error interacting with email input field ({selector}): {e}")
+            if not email_input:
+                raise Exception("Email input field not found")
+
+            clicked = False
+            for by, selector in [
+                (By.ID, "idSIButton9"),
+                (By.XPATH, "//input[@type='submit']"),
+                (By.XPATH, "//button[contains(text(), 'Next')]")
+            ]:
+                try:
+                    btn = WebDriverWait(driver, 10).until(
+                        EC.element_to_be_clickable((by, selector))
+                    )
+                    click_with_human_mouse(driver, btn)
+                    clicked = True
                     break
-            if found:
-                break
-        except Exception:
-            logger.info(f"Error interacting with selector: {selector}")
-    if not found:
-        raise Exception("Sign in button not found or not clickable")
+                except Exception:
+                    continue
 
-    WebDriverWait(driver, 30).until(
-        lambda d: d.execute_script("return document.readyState") == "complete"
-    )
-    time.sleep(2)
-    logger.info(f"Page loaded: {driver.current_url}")
+            if not clicked:
+                raise Exception("Next button not found or not clickable")
 
-    WebDriverWait(driver, 10).until(
-        lambda d: d.execute_script("return document.readyState") == "complete"
-    )
-    time.sleep(5)
-
-    email_input = None
-    for by, selector in [
-        (By.NAME, "loginfmt"),
-        (By.CSS_SELECTOR, "input[type='email']"),
-        (By.XPATH, "//input[@type='email' or @name='loginfmt']")
-    ]:
-        try:
-            email_input = wait.until(
-                EC.element_to_be_clickable((by, selector))
+            time.sleep(7)
+            password_input = wait.until(
+                EC.presence_of_element_located((By.NAME, "passwd"))
             )
-            if email_input.is_displayed():
-                click_with_human_mouse(driver, email_input)
-                email_input.clear()
-                human_typing(email_input, email)
-                logger.info(f"Entered email: {email}")
-                break
+            human_typing(password_input, password)
+            logger.info("Entered password")
+
+            btn_si = wait.until(
+                EC.element_to_be_clickable((By.ID, "idSIButton9"))
+            )
+            click_with_human_mouse(driver, btn_si)
+            time.sleep(15)
+
+            try:
+                logger.info("Try to click Yes button after password step")
+                confirm_next_btn = WebDriverWait(driver, 5).until(
+                    EC.element_to_be_clickable((
+                        By.ID, "idSubmit_ProofUp_Redirect"
+                    ))
+                )
+                click_with_human_mouse(driver, confirm_next_btn)
+                logger.info("Clicked confirmation 'Yes' (idSubmit_ProofUp_Redirect)")
+                random_sleep()
+
+                logger.info("Waiting for potential confirmation step after password...")
+                time.sleep(7)
+                try:
+                    skip_setup_btn = WebDriverWait(driver, 10).until(
+                        EC.element_to_be_clickable((
+                            By.XPATH, "//button[normalize-space()='Skip setup']"
+                        ))
+                    )
+                    click_with_human_mouse(driver, skip_setup_btn)
+                    logger.info("Clicked 'Skip setup' button")
+                    random_sleep()
+                except Exception:
+                    logger.info("No 'Skip setup' button appeared")
+            except Exception as e:
+                logger.info("No confirmation 'Yes' button appeared after password step")
+                logger.debug(f"Exception detail: {e}")
+
+            time.sleep(7)
+            btn_si = wait.until(EC.element_to_be_clickable((By.ID, "idSIButton9")))
+            click_with_human_mouse(driver, btn_si)
+            time.sleep(10)
+            ActionChains(driver).send_keys(Keys.ENTER).perform()
+            time.sleep(10)
+            ActionChains(driver).send_keys(Keys.ENTER).perform()
+            logger.info("Try to pressed 'Enter' to choose an account.")
+            time.sleep(5)
+            try:
+                skip_setup_btn = WebDriverWait(driver, 10).until(
+                    EC.element_to_be_clickable((
+                        By.XPATH, "//button[normalize-space()='Skip setup']"
+                    ))
+                )
+                click_with_human_mouse(driver, skip_setup_btn)
+                logger.info("Clicked 'Skip setup' button")
+                random_sleep()
+            except Exception:
+                logger.info("No 'Skip setup' button appeared")
+            time.sleep(10)
+            ActionChains(driver).send_keys(Keys.ENTER).perform()
+            logger.info("Try to pressed 'Enter' to choose an account.")
+            try:
+                skip_setup_btn = WebDriverWait(driver, 10).until(
+                    EC.element_to_be_clickable((
+                        By.XPATH, "//button[normalize-space()='Skip setup']"
+                    ))
+                )
+                click_with_human_mouse(driver, skip_setup_btn)
+                logger.info("Clicked 'Skip setup' button")
+                random_sleep()
+                time.sleep(10)
+                ActionChains(driver).send_keys(Keys.ENTER).perform()
+                logger.info("Try to pressed 'Enter' to choose an account.")
+            except Exception:
+                logger.info("No 'Skip setup' button appeared")
+
+            WebDriverWait(driver, 30).until(
+                lambda d: d.execute_script("return document.readyState") == "complete"
+            )
+            WebDriverWait(driver, 30).until(
+                EC.presence_of_element_located((By.CSS_SELECTOR, "[role='main']"))
+            )
+            logger.info(f"[{email}] Logged in and inbox loaded.")
+            return
+
         except Exception as e:
-            logger.info(
-                f"Error interacting with email input field ({selector}): {e}")
-    if not email_input:
-        raise Exception("Email input field not found")
-
-    clicked = False
-    for by, selector in [
-        (By.ID, "idSIButton9"),
-        (By.XPATH, "//input[@type='submit']"),
-        (By.XPATH, "//button[contains(text(), 'Next')]")
-    ]:
-        try:
-            btn = WebDriverWait(driver, 10).until(
-                EC.element_to_be_clickable((by, selector))
-            )
-            click_with_human_mouse(driver, btn)
-            clicked = True
-            break
-        except Exception:
-            continue
-
-    if not clicked:
-        raise Exception("Next button not found or not clickable")
-
-    time.sleep(7)
-    password_input = wait.until(
-        EC.presence_of_element_located((By.NAME, "passwd"))
-    )
-    human_typing(password_input, password)
-    logger.info("Entered password")
-
-    btn_si = wait.until(
-        EC.element_to_be_clickable((By.ID, "idSIButton9"))
-    )
-    click_with_human_mouse(driver, btn_si)
-    time.sleep(15)
-
-    try:
-        logger.info("Try to click Yes button after password step")
-        confirm_next_btn = WebDriverWait(driver, 5).until(
-            EC.element_to_be_clickable((
-                By.ID, "idSubmit_ProofUp_Redirect"
-            ))
-        )
-        click_with_human_mouse(driver, confirm_next_btn)
-        logger.info("Clicked confirmation 'Yes' (idSubmit_ProofUp_Redirect)")
-        random_sleep()
-
-        logger.info(
-            "Waiting for potential confirmation step after password...")
-        time.sleep(7)
-        try:
-            skip_setup_btn = WebDriverWait(driver, 10).until(
-                EC.element_to_be_clickable((
-                    By.XPATH,
-                    ("//button[normalize-space()='Skip setup']")
-                ))
-            )
-            click_with_human_mouse(driver, skip_setup_btn)
-            logger.info("Clicked 'Skip setup' button")
-            random_sleep()
-        except Exception:
-            logger.info("No 'Skip setup' button appeared")
-    except Exception as e:
-        logger.info(
-            "No confirmation 'Yes' button appeared after password step")
-        logger.debug(f"Exception detail: {e}")
-
-    time.sleep(7)
-    btn_si = wait.until(
-        EC.element_to_be_clickable((By.ID, "idSIButton9"))
-    )
-    click_with_human_mouse(driver, btn_si)
-    time.sleep(10)
-    ActionChains(driver).send_keys(Keys.ENTER).perform()
-    time.sleep(10)
-    ActionChains(driver).send_keys(Keys.ENTER).perform()
-    logger.info("Try to pressed 'Enter' to choose an account.")
-    time.sleep(5)
-    try:
-        skip_setup_btn = WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable((
-                By.XPATH,
-                ("//button[normalize-space()='Skip setup']")
-            ))
-        )
-        click_with_human_mouse(driver, skip_setup_btn)
-        logger.info("Clicked 'Skip setup' button")
-        random_sleep()
-    except Exception:
-        logger.info("No 'Skip setup' button appeared")
-    time.sleep(10)
-    ActionChains(driver).send_keys(Keys.ENTER).perform()
-    logger.info("Try to pressed 'Enter' to choose an account.")
-    try:
-        skip_setup_btn = WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable((
-                By.XPATH,
-                ("//button[normalize-space()='Skip setup']")
-            ))
-        )
-        click_with_human_mouse(driver, skip_setup_btn)
-        logger.info("Clicked 'Skip setup' button")
-        random_sleep()
-        time.sleep(10)
-        ActionChains(driver).send_keys(Keys.ENTER).perform()
-        logger.info("Try to pressed 'Enter' to choose an account.")
-    except Exception:
-        logger.info("No 'Skip setup' button appeared")
-
-    WebDriverWait(driver, 30).until(
-        lambda d: d.execute_script("return document.readyState") == "complete"
-    )
-    WebDriverWait(driver, 30).until(
-        EC.presence_of_element_located((By.CSS_SELECTOR, "[role='main']"))
-    )
-    logger.info(f"[{email}] Logged in and inbox loaded.")
+            logger.warning(f"[{email}] Login attempt {attempt} failed: {e}")
+            if attempt < max_attempts:
+                logger.info("Retrying login...")
+                time.sleep(5)
+            else:
+                logger.error(f"[{email}] All login attempts failed.")
+                raise
 
 def mark_visible_emails_as_spam(driver) -> None:
     processed_ids = set()
