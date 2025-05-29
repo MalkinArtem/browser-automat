@@ -200,12 +200,16 @@ def login_to_email(driver, email, password):
         raise Exception("Sign in button not found or not clickable")
 
     try:
-        WebDriverWait(driver, 10).until(lambda d: len(d.window_handles) > 1)
+        WebDriverWait(driver, 30).until(
+            lambda d: "login.live.com" in d.current_url or len(
+                d.window_handles) > 1)
         for handle in driver.window_handles:
             driver.switch_to.window(handle)
             if "login.live.com" in driver.current_url:
+                logger.info("Switched to login.live.com window.")
                 break
-        logger.info("Switched to login.live.com window.")
+        else:
+            logger.info("login.live.com opened in the same window.")
     except TimeoutException:
         raise Exception("login.live.com did not open in time.")
 
