@@ -199,16 +199,13 @@ def login_to_email(driver, email, password):
     if not found:
         raise Exception("Sign in button not found or not clickable")
 
-    random_sleep()
-
-    WebDriverWait(driver, 20).until(
-        lambda
-            d: "login.live.com" in d.current_url or "outlook.live.com" in d.current_url
+    WebDriverWait(driver, 10).until(
+        lambda d: len(d.window_handles) > 1
     )
-    WebDriverWait(driver, 30).until(
-        lambda d: d.execute_script("return document.readyState") == "complete"
-    )
-    time.sleep(2)
+    for handle in driver.window_handles:
+        driver.switch_to.window(handle)
+        if "login.live.com" in driver.current_url:
+            break
 
     WebDriverWait(driver, 10).until(
         lambda d: d.execute_script("return document.readyState") == "complete"
