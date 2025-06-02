@@ -200,6 +200,15 @@ def login_to_email(driver, email, password, max_attempts=3):
             if not found:
                 raise Exception("Sign in button not found or not clickable")
 
+            current_handles = driver.window_handles
+            time.sleep(2)
+            if len(current_handles) > 1:
+                driver.switch_to.window(current_handles[-1])
+                logger.info("Switched to new tab after clicking 'Sign in'")
+            else:
+                logger.info(
+                    "No new tab opened — continuing in current window.")
+
             WebDriverWait(driver, 30).until(
                 lambda d: d.execute_script("return document.readyState") == "complete"
             )
